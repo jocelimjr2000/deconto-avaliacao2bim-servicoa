@@ -1,12 +1,20 @@
 package deconto.avaliacao.sva.services;
 
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import deconto.avaliacao.sva.constants.RabbitMQConstants;
 import deconto.avaliacao.sva.datatransferobjects.FolhaCalculadaDTO;
 import deconto.avaliacao.sva.datatransferobjects.FolhaDTO;
 
 @Service("FolhaService")
 public class FolhaService {
+	
+	@Autowired
+    private AmqpTemplate amqpTemplate;
 	
 	public FolhaCalculadaDTO calcular(FolhaDTO folhaDTO) {
 		
@@ -28,6 +36,14 @@ public class FolhaService {
 		folhaCalculadaDTO.setFgts(fgts);
 		folhaCalculadaDTO.setLiquido(liq);
 		folhaCalculadaDTO.setFuncionario(folhaDTO.getFuncionario());
+		
+		MessagePostProcessor messagePostProcessor = message -> {
+			MessageProperties messageProperties = message.getMessageProperties();
+			messageProperties.setContentType("application/json");
+			return message;
+	    };
+	    
+		amqpTemplate.convertAndSend(RabbitMQConstants.QUEUE, folhaCalculadaDTO, messagePostProcessor);
 		
 		return folhaCalculadaDTO;
 	}
